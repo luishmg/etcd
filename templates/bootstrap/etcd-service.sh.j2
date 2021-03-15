@@ -1,0 +1,44 @@
+#!/bin/bash
+
+INTERNAL_IP=$(ip addr show eth1 | grep "inet " | awk '{print $2}' | cut -d / -f 1)
+FQDN = "{{ domain }}"
+if [ -z "$FQDN" ]; then
+    NAME=$(hostname -s)
+else
+    NAME=$(hostname -f)
+fi
+
+cat <<EOF | sudo tee /etc/systemd/system/etcd.service
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+
+[Service]
+ExecStart=/usr/local/bin/etcd \\
+  --name ${NAME} \\
+  --cert-file={{ cert_dir }}{{ cert }} \\
+  --key-file={{ cert_dir }}{{ key }} \\
+  --peer-cert-file={{ cert_dir }}{{ cert }} \\
+  --peer-key-file={{ cert_dir }}{{ key }} \\
+  --trusted-ca-file={{ cert_dir }}{{ ca_cert }} \\
+  --peer-trusted-ca-file={{ cert_dir }}{{ ca_cert }} \\
+  --peer-client-cert-auth \\
+  --client-cert-auth \\
+  --initial-advertise-peer-urls https://${INTERNAL_IP}:{{ port }} \\
+  --listen-peer-urls https://${INTERNAL_IP}:{{ port }} \\
+  --listen-client-urls https://${INTERNAL_IP}:{{ client_port }},https://127.0.0.1:{{ client_port }} \\
+  --advertise-client-urls https://${INTERNAL_IP}:{{ client_port }} \\
+  --initial-cluster-token etcd-cluster-0 \\
+{% set cluster = [] %}
+{% for item in ip -%}
+    {{ cluster.append( short_hostname + loop.index|string + domain + "=https://" + item + ":" + port )  }}
+{%- endfor %}
+  --initial-cluster {{ cluster|join(",") }} \\
+  --initial-cluster-state new \\
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF

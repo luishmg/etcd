@@ -1,0 +1,18 @@
+version: "v3.4.0"
+port: "2380"
+client_port: "2379"
+cert_dir: "/etc/etcd/pki/"
+cert: "etcd.pem"
+key: "etcd-key.pem"
+ca_cert: "ca.pem"
+bin_url: "https://github.com/etcd-io/etcd/releases/download/"
+templates:
+  - { src: "bootstrap/copy-certs-and-configs-etcd.sh.j2", dst: "/opt/startup/" }
+  - { src: "bootstrap/etcd-service.sh.j2", dst: "/opt/startup/" }
+  - { src: "bootstrap/bootstrap-etcd.sh.j2", dst: "/opt/startup/" }
+  - { src: "systemd/bootstrap-etcd.service.j2", dst: "/etc/systemd/system/" }
+directories:
+  - "/etc/etcd/pki"
+  - "/var/lib/etcd"
+  - "/tmp/etcd"
+  - "/opt/startup"

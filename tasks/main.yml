@@ -1,0 +1,58 @@
+- name: etcd - Create directories
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    '{{ directories }}'
+
+- name: etcd - Certificate manipulation binaries
+  get_url:
+    url: '{{ item }}'
+    dest: /tmp/etcd/
+  loop:
+    - '{{ bin_url + version + "/etcd-" + version + "-linux-amd64.tar.gz" }}'
+
+- name: etcd - Extracting etcd files
+  unarchive:
+    src: '{{ "/tmp/etcd/etcd-" + version + "-linux-amd64.tar.gz" }}'
+    dest: /tmp/etcd/
+    remote_src: true
+
+- name: etcd - Find etcd files that begin with etcd
+  find:
+    paths: '{{ "/tmp/etcd/etcd-" + version + "-linux-amd64" }}'
+    patterns: 'etcd*'
+  register: bin
+
+- name: etcd - Copy etcd binary to the /usr/local/bin
+  copy:
+    src: '{{ item.path }}'
+    dest: /usr/local/bin/
+    mode: '0755'
+    remote_src: true
+  loop:
+    '{{ bin.files }}'
+
+- name: etcd - Cleaning etcd downloaded files
+  file:
+    path: '/tmp/etcd/'
+    state: absent
+
+- name: etcd - Adding startup scripts and Service files
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dst + item.src.split("/")[1].split(".")[0] + "." + item.src.split("/")[1].split(".")[1] }}'
+    owner: root
+    mode: '0750' 
+  loop:
+    '{{ templates }}'
+
+- name: Base - Reload daemon to get the bootstrap.service
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Base - Enable bootstrap.service
+  ansible.builtin.systemd:
+    name: bootstrap-etcd
+    enabled: yes

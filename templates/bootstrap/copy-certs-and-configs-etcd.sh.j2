@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cp -f /vagrant/cert/{{ ca_cert }} \
+  /vagrant/cert/{{ cert }} /vagrant/cert/{{ key }} \
+  /etc/etcd/pki/
